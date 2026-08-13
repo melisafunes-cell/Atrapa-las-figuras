@@ -1,0 +1,2167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width,initial-scale=1.0,
+               maximum-scale=1.0,user-scalable=no">
+
+<title>🎮 Atrapa las Figuras</title>
+
+<!-- PeerJS para conectar los celulares -->
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js"></script>
+
+<style>
+* {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: none;
+}
+
+html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    background: #080010;
+    color: white;
+}
+
+button,
+input {
+    touch-action: manipulation;
+}
+
+button {
+    border: 2px solid white;
+    border-radius: 14px;
+    padding: 14px 20px;
+    margin: 7px;
+    background: #147cff;
+    color: white;
+    font-size: 18px;
+    font-weight: bold;
+    box-shadow: 0 0 15px #147cff;
+}
+
+button:active {
+    transform: scale(.94);
+}
+
+input {
+    width: min(330px, 85vw);
+    padding: 14px;
+    margin: 7px;
+    border-radius: 12px;
+    border: 2px solid #00eaff;
+    background: #12051e;
+    color: white;
+    font-size: 19px;
+    text-align: center;
+}
+
+input[type="color"] {
+    width: 75px;
+    height: 55px;
+    padding: 3px;
+}
+
+/* =========================
+   PANTALLAS
+========================= */
+
+.pantalla {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    padding: 20px;
+    background:
+        radial-gradient(circle,
+        #351067 0%,
+        #12051e 45%,
+        #050008 100%);
+    z-index: 100;
+}
+
+.oculto {
+    display: none !important;
+}
+
+h1 {
+    font-size: clamp(32px, 10vw, 65px);
+    text-align: center;
+    color: #00eaff;
+    text-shadow:
+        0 0 10px #00eaff,
+        0 0 30px #00eaff;
+    margin: 10px;
+}
+
+.subtitulo {
+    text-align: center;
+    font-size: 18px;
+    margin: 5px 0 15px;
+}
+
+/* =========================
+   SALA
+========================= */
+
+#codigoSala {
+    margin: 15px;
+    padding: 15px 25px;
+    border: 3px solid #00eaff;
+    border-radius: 15px;
+    color: #00eaff;
+    background: #080010;
+    font-size: 27px;
+    font-weight: bold;
+    letter-spacing: 5px;
+    box-shadow: 0 0 20px #00eaff;
+    user-select: text;
+    touch-action: manipulation;
+}
+
+#estadoSala {
+    font-size: 20px;
+    margin: 10px;
+}
+
+/* =========================
+   JUEGO
+========================= */
+
+#juego {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+
+    background:
+        radial-gradient(circle at center,
+        #29104f,
+        #080010 75%);
+}
+
+/* =========================
+   INFORMACIÓN
+========================= */
+
+#puntos,
+#perdidas,
+#cantidadJugadores {
+    position: absolute;
+    left: 12px;
+    z-index: 30;
+    text-shadow: 0 2px 4px black;
+}
+
+#puntos {
+    top: 12px;
+    font-size: 20px;
+}
+
+#perdidas {
+    top: 40px;
+    font-size: 18px;
+}
+
+#cantidadJugadores {
+    top: 67px;
+    font-size: 17px;
+}
+
+/* =========================
+   BOTONES SUPERIORES
+========================= */
+
+#botonPausa {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    padding: 9px 15px;
+    margin: 0;
+    font-size: 14px;
+    background: #242424;
+}
+
+#botonSkin {
+    position: absolute;
+    top: 10px;
+    right: 8px;
+    z-index: 50;
+    padding: 9px 12px;
+    margin: 0;
+    font-size: 14px;
+}
+
+/* =========================
+   JUGADOR
+========================= */
+
+.jugador {
+    position: absolute;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    border: 4px solid white;
+    box-shadow:
+        0 0 15px currentColor,
+        0 0 30px currentColor;
+    z-index: 15;
+}
+
+.jugador::before,
+.jugador::after {
+    content: "";
+    position: absolute;
+    top: 13px;
+    width: 8px;
+    height: 13px;
+    background: #111;
+    border-radius: 50%;
+}
+
+.jugador::before {
+    left: 11px;
+}
+
+.jugador::after {
+    right: 11px;
+}
+
+/* =========================
+   JUGADORES REMOTOS
+========================= */
+
+.jugadorRemoto {
+    position: absolute;
+    width: 58px;
+    height: 58px;
+    transform: translate(-50%, -50%);
+    z-index: 12;
+}
+
+.nombreJugador {
+    position: absolute;
+    top: -23px;
+    left: 50%;
+    transform: translateX(-50%);
+
+    color: white;
+    font-size: 13px;
+    font-weight: bold;
+    white-space: nowrap;
+
+    text-shadow:
+        0 2px 4px black,
+        0 0 6px black;
+
+    pointer-events: none;
+}
+
+/* =========================
+   FIGURAS
+========================= */
+
+.figura {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    z-index: 5;
+}
+
+.circulo {
+    border-radius: 50%;
+    background: #ff3030;
+    box-shadow: 0 0 18px #ff3030;
+}
+
+.cuadrado {
+    background: #ffe000;
+    box-shadow: 0 0 18px #ffe000;
+}
+
+.triangulo {
+    width: 0;
+    height: 0;
+
+    border-left: 21px solid transparent;
+    border-right: 21px solid transparent;
+    border-bottom: 42px solid #b94cff;
+
+    filter:
+        drop-shadow(0 0 10px #b94cff);
+}
+
+/* =========================
+   PAUSA
+========================= */
+
+#pausaPantalla {
+    position: absolute;
+    inset: 0;
+
+    display: none;
+
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+
+    background: rgba(0,0,0,.78);
+
+    z-index: 40;
+}
+
+#pausaPantalla h2 {
+    color: #00eaff;
+    font-size: 50px;
+    text-shadow: 0 0 20px #00eaff;
+}
+
+/* =========================
+   PERSONALIZACIÓN
+========================= */
+
+#personalizar {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%);
+
+    width: min(350px, 90vw);
+
+    padding: 25px;
+
+    display: none;
+
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+
+    background: #100420;
+
+    border: 3px solid #00eaff;
+    border-radius: 20px;
+
+    z-index: 70;
+
+    box-shadow: 0 0 30px #00eaff;
+}
+
+/* =========================
+   GAME OVER
+========================= */
+
+#gameOver {
+    position: absolute;
+    inset: 0;
+
+    display: none;
+
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+
+    background: rgba(0,0,0,.94);
+
+    z-index: 90;
+}
+
+#gameOver h2 {
+    font-size: 52px;
+    color: red;
+    text-shadow: 0 0 25px red;
+    text-align: center;
+}
+
+/* =========================
+   CAÍDA
+========================= */
+
+#miJugador.cayendo {
+    animation: caer .8s ease-in forwards;
+
+    background: red !important;
+    color: red !important;
+
+    box-shadow:
+        0 0 20px red,
+        0 0 50px red !important;
+}
+
+@keyframes caer {
+
+    0% {
+        transform:
+            translate(-50%,-50%)
+            rotate(0deg);
+    }
+
+    40% {
+        transform:
+            translate(-50%,-50%)
+            translateY(30px)
+            rotate(25deg);
+    }
+
+    70% {
+        transform:
+            translate(-50%,-50%)
+            translateY(70px)
+            rotate(60deg);
+    }
+
+    100% {
+        transform:
+            translate(-50%,-50%)
+            translateY(110px)
+            rotate(90deg);
+        opacity: .75;
+    }
+}
+
+/* =========================
+   MENSAJE
+========================= */
+
+#mensaje {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+
+    width: 90%;
+
+    text-align: center;
+
+    font-size: 13px;
+
+    color: #ccc;
+
+    z-index: 30;
+}
+</style>
+</head>
+
+<body>
+
+<!-- =========================
+     INICIO
+========================= -->
+
+<div id="inicio" class="pantalla">
+
+    <h1>🎮 ATRAPA LAS FIGURAS</h1>
+
+    <div class="subtitulo">
+        🔥 SIX SEVEN — 67 JUGADORES 🔥
+    </div>
+
+    <input
+        id="nombreInicio"
+        maxlength="12"
+        placeholder="Tu nombre"
+        autocomplete="off"
+    >
+
+    <div>🎨 Elegí tu color</div>
+
+    <input
+        id="colorInicio"
+        type="color"
+        value="#00eaff"
+    >
+
+    <button id="crearBtn">
+        🏠 CREAR PARTIDA
+    </button>
+
+    <button id="unirseBtn">
+        🚪 UNIRSE A PARTIDA
+    </button>
+
+</div>
+
+<!-- =========================
+     UNIRSE
+========================= -->
+
+<div id="unirse" class="pantalla oculto">
+
+    <h1>🚪 UNIRSE</h1>
+
+    <input
+        id="codigoEntrada"
+        maxlength="8"
+        placeholder="CÓDIGO"
+        autocomplete="off"
+    >
+
+    <button id="entrarBtn">
+        🎮 ENTRAR
+    </button>
+
+    <button id="volverBtn">
+        ⬅ VOLVER
+    </button>
+
+</div>
+
+<!-- =========================
+     SALA
+========================= -->
+
+<div id="espera" class="pantalla oculto">
+
+    <h1>🏠 SALA</h1>
+
+    <div>Código para tu mamá:</div>
+
+    <div id="codigoSala">
+        ------
+    </div>
+
+    <div id="estadoSala">
+        👥 1/67
+    </div>
+
+    <button id="iniciarBtn">
+        ▶ INICIAR
+    </button>
+
+    <p>
+        Compartí este código con tu mamá ❤️
+    </p>
+
+</div>
+
+<!-- =========================
+     JUEGO
+========================= -->
+
+<div id="juego" class="oculto">
+
+    <div id="puntos">
+        ⭐ Puntos: 0
+    </div>
+
+    <div id="perdidas">
+        ❌ Perdidas: 0/5
+    </div>
+
+    <div id="cantidadJugadores">
+        👥 Jugadores: 1/67
+    </div>
+
+    <button id="botonPausa">
+        ⏸ PAUSA
+    </button>
+
+    <button id="botonSkin">
+        🎨 SKIN
+    </button>
+
+    <div id="pausaPantalla">
+        <h2>⏸ PAUSA</h2>
+        <p>Presioná V para seguir</p>
+    </div>
+
+    <div id="personalizar">
+
+        <h2>🎨 SKIN</h2>
+
+        <p>Tu nombre:</p>
+
+        <input
+            id="nombreSkin"
+            maxlength="12"
+            autocomplete="off"
+        >
+
+        <p>Tu color:</p>
+
+        <input
+            id="colorSkin"
+            type="color"
+        >
+
+        <button id="guardarSkin">
+            ✅ GUARDAR
+        </button>
+
+        <button id="cerrarSkin">
+            ❌ CERRAR
+        </button>
+
+    </div>
+
+    <div id="gameOver">
+
+        <h2>💀 GAME OVER</h2>
+
+        <p id="resultado">
+            ⭐ Puntos: 0
+        </p>
+
+        <button onclick="location.reload()">
+            🔄 REINICIAR
+        </button>
+
+    </div>
+
+    <div id="mensaje">
+        👆 Arrastrá tu personaje con el dedo
+    </div>
+
+</div>
+
+<script>
+
+/* =====================================================
+   CONFIGURACIÓN
+===================================================== */
+
+const MAX_JUGADORES = 67;
+const MAX_PERDIDAS = 5;
+
+/* =====================================================
+   VARIABLES
+===================================================== */
+
+let peer;
+let miPeerId = null;
+let codigoPartida = null;
+
+let esHost = false;
+
+let miNombre = "Jugador";
+let miColor = "#00eaff";
+
+let miX = 50;
+let miY = 80;
+
+let puntos = 0;
+let perdidas = 0;
+
+let pausado = false;
+let juegoIniciado = false;
+let juegoTerminado = false;
+
+let arrastrando = false;
+
+let conexiones = {};
+let jugadores = {};
+let figuras = {};
+
+let contadorFiguras = 0;
+
+/* =====================================================
+   ELEMENTOS
+===================================================== */
+
+const inicio =
+    document.getElementById("inicio");
+
+const unirse =
+    document.getElementById("unirse");
+
+const espera =
+    document.getElementById("espera");
+
+const juego =
+    document.getElementById("juego");
+
+const codigoSala =
+    document.getElementById("codigoSala");
+
+const estadoSala =
+    document.getElementById("estadoSala");
+
+const puntosTexto =
+    document.getElementById("puntos");
+
+const perdidasTexto =
+    document.getElementById("perdidas");
+
+const cantidadTexto =
+    document.getElementById("cantidadJugadores");
+
+const botonPausa =
+    document.getElementById("botonPausa");
+
+const pausaPantalla =
+    document.getElementById("pausaPantalla");
+
+const personalizar =
+    document.getElementById("personalizar");
+
+/* =====================================================
+   BOTONES
+===================================================== */
+
+document.getElementById("crearBtn")
+    .onclick = crearPartida;
+
+document.getElementById("unirseBtn")
+    .onclick = () => {
+
+        inicio.classList.add("oculto");
+        unirse.classList.remove("oculto");
+
+    };
+
+document.getElementById("volverBtn")
+    .onclick = () => {
+
+        unirse.classList.add("oculto");
+        inicio.classList.remove("oculto");
+
+    };
+
+document.getElementById("entrarBtn")
+    .onclick = unirsePartida;
+
+document.getElementById("iniciarBtn")
+    .onclick = iniciarPartida;
+
+document.getElementById("botonPausa")
+    .onclick = alternarPausa;
+
+document.getElementById("botonSkin")
+    .onclick = abrirSkin;
+
+document.getElementById("guardarSkin")
+    .onclick = guardarSkin;
+
+document.getElementById("cerrarSkin")
+    .onclick = cerrarSkin;
+
+/* =====================================================
+   CREAR CÓDIGO
+===================================================== */
+
+function generarCodigo() {
+
+    return Math.random()
+        .toString(36)
+        .substring(2,8)
+        .toUpperCase();
+
+}
+
+/* =====================================================
+   LEER DATOS
+===================================================== */
+
+function leerDatos() {
+
+    miNombre =
+        document
+        .getElementById("nombreInicio")
+        .value
+        .trim() || "Jugador";
+
+    miColor =
+        document
+        .getElementById("colorInicio")
+        .value;
+
+}
+
+/* =====================================================
+   CREAR PARTIDA
+===================================================== */
+
+function crearPartida() {
+
+    leerDatos();
+
+    esHost = true;
+
+    codigoPartida =
+        generarCodigo();
+
+    /*
+       El código se convierte en el ID
+       PeerJS de la sala.
+    */
+
+    peer = new Peer(
+        "atrapa67-" +
+        codigoPartida.toLowerCase()
+    );
+
+    peer.on("open", id => {
+
+        miPeerId = id;
+
+        jugadores[id] = {
+
+            id: id,
+            nombre: miNombre,
+            color: miColor,
+            x: miX,
+            y: miY
+
+        };
+
+        inicio.classList.add("oculto");
+        espera.classList.remove("oculto");
+
+        codigoSala.textContent =
+            codigoPartida;
+
+        actualizarCantidad();
+
+    });
+
+    peer.on("connection", conn => {
+
+        prepararConexion(conn);
+
+    });
+
+    peer.on("error", error => {
+
+        console.log(error);
+
+        alert(
+            "No se pudo crear la sala.\n" +
+            "Probá recargando la página."
+        );
+
+    });
+
+}
+
+/* =====================================================
+   UNIRSE
+===================================================== */
+
+function unirsePartida() {
+
+    leerDatos();
+
+    const codigo =
+        document
+        .getElementById("codigoEntrada")
+        .value
+        .trim()
+        .toUpperCase();
+
+    if (!codigo) {
+
+        alert("Escribí el código de sala.");
+
+        return;
+
+    }
+
+    esHost = false;
+
+    codigoPartida = codigo;
+
+    peer = new Peer();
+
+    peer.on("open", id => {
+
+        miPeerId = id;
+
+        const conn =
+            peer.connect(
+                "atrapa67-" +
+                codigo.toLowerCase(),
+                {
+                    reliable: true
+                }
+            );
+
+        prepararConexion(conn);
+
+    });
+
+    peer.on("error", error => {
+
+        console.log(error);
+
+        alert(
+            "No se encontró la sala.\n" +
+            "Revisá el código."
+        );
+
+    });
+
+}
+
+/* =====================================================
+   CONEXIÓN
+===================================================== */
+
+function prepararConexion(conn) {
+
+    conexiones[conn.peer] = conn;
+
+    conn.on("open", () => {
+
+        conn.send({
+
+            tipo: "entrar",
+            id: miPeerId,
+            nombre: miNombre,
+            color: miColor
+
+        });
+
+    });
+
+    conn.on("data", recibirDatos);
+
+    conn.on("close", () => {
+
+        delete conexiones[conn.peer];
+
+        eliminarJugador(conn.peer);
+
+        delete jugadores[conn.peer];
+
+        actualizarCantidad();
+
+    });
+
+}
+
+/* =====================================================
+   RECIBIR DATOS
+===================================================== */
+
+function recibirDatos(data) {
+
+    if (!data) return;
+
+    /* -------- ENTRAR -------- */
+
+    if (data.tipo === "entrar") {
+
+        if (!esHost) return;
+
+        const cantidad =
+            Object.keys(jugadores).length;
+
+        if (cantidad >= MAX_JUGADORES) {
+
+            enviarA(data.id, {
+                tipo: "lleno"
+            });
+
+            return;
+
+        }
+
+        jugadores[data.id] = {
+
+            id: data.id,
+            nombre: data.nombre,
+            color: data.color,
+            x: 50,
+            y: 80
+
+        };
+
+        enviarA(data.id, {
+
+            tipo: "estado",
+
+            jugadores: jugadores,
+
+            iniciado: juegoIniciado,
+            pausado: pausado
+
+        });
+
+        enviarATodos({
+
+            tipo: "nuevo",
+
+            jugador: jugadores[data.id]
+
+        });
+
+        actualizarCantidad();
+
+        return;
+    }
+
+    /* -------- ESTADO -------- */
+
+    if (data.tipo === "estado") {
+
+        jugadores =
+            data.jugadores || {};
+
+        Object.values(jugadores)
+        .forEach(j => {
+
+            if (j.id !== miPeerId) {
+
+                crearJugador(j);
+
+            }
+
+        });
+
+        if (data.iniciado) {
+
+            iniciarJuegoLocal();
+
+        }
+
+        pausado =
+            data.pausado || false;
+
+        actualizarPausa();
+
+        actualizarCantidad();
+
+        return;
+    }
+
+    /* -------- NUEVO -------- */
+
+    if (data.tipo === "nuevo") {
+
+        jugadores[
+            data.jugador.id
+        ] = data.jugador;
+
+        if (
+            data.jugador.id !==
+            miPeerId
+        ) {
+
+            crearJugador(
+                data.jugador
+            );
+
+        }
+
+        actualizarCantidad();
+
+        return;
+    }
+
+    /* -------- MOVIMIENTO -------- */
+
+    if (data.tipo === "movimiento") {
+
+        if (!jugadores[data.id])
+            return;
+
+        jugadores[data.id].x =
+            data.x;
+
+        jugadores[data.id].y =
+            data.y;
+
+        if (
+            data.id !==
+            miPeerId
+        ) {
+
+            moverJugadorRemoto(
+                data.id,
+                data.x,
+                data.y
+            );
+
+        }
+
+        return;
+    }
+
+    /* -------- SKIN -------- */
+
+    if (data.tipo === "skin") {
+
+        if (!jugadores[data.id])
+            return;
+
+        jugadores[data.id].color =
+            data.color;
+
+        jugadores[data.id].nombre =
+            data.nombre;
+
+        if (
+            data.id !==
+            miPeerId
+        ) {
+
+            actualizarJugador(
+                data.id
+            );
+
+        }
+
+        return;
+    }
+
+    /* -------- PAUSA -------- */
+
+    if (data.tipo === "pausa") {
+
+        pausado =
+            data.estado;
+
+        actualizarPausa();
+
+        return;
+    }
+
+    /* -------- INICIO -------- */
+
+    if (data.tipo === "inicio") {
+
+        iniciarJuegoLocal();
+
+        return;
+    }
+
+    /* -------- FIGURA -------- */
+
+    if (data.tipo === "figura") {
+
+        mostrarFigura(data.figura);
+
+        return;
+    }
+
+    /* -------- LLENO -------- */
+
+    if (data.tipo === "lleno") {
+
+        alert(
+            "❌ La sala está llena: 67/67"
+        );
+
+    }
+
+}
+
+/* =====================================================
+   ENVIAR A UNO
+===================================================== */
+
+function enviarA(id, data) {
+
+    const conn =
+        conexiones[id];
+
+    if (
+        conn &&
+        conn.open
+    ) {
+
+        conn.send(data);
+
+    }
+
+}
+
+/* =====================================================
+   ENVIAR A TODOS
+===================================================== */
+
+function enviarATodos(data) {
+
+    Object.values(conexiones)
+    .forEach(conn => {
+
+        if (conn && conn.open) {
+
+            conn.send(data);
+
+        }
+
+    });
+
+}
+
+/* =====================================================
+   INICIAR
+===================================================== */
+
+function iniciarPartida() {
+
+    if (!esHost) return;
+
+    iniciarJuegoLocal();
+
+    enviarATodos({
+        tipo: "inicio"
+    });
+
+}
+
+function iniciarJuegoLocal() {
+
+    inicio.classList.add("oculto");
+    unirse.classList.add("oculto");
+    espera.classList.add("oculto");
+
+    juego.classList.remove("oculto");
+
+    juegoIniciado = true;
+
+    crearMiJugador();
+
+    Object.values(jugadores)
+    .forEach(j => {
+
+        if (j.id !== miPeerId) {
+
+            crearJugador(j);
+
+        }
+
+    });
+
+    actualizarCantidad();
+
+    if (esHost) {
+
+        setInterval(
+            crearFigura,
+            900
+        );
+
+    }
+
+}
+
+/* =====================================================
+   CREAR MI PERSONAJE
+===================================================== */
+
+function crearMiJugador() {
+
+    if (
+        document.getElementById(
+            "miJugador"
+        )
+    ) return;
+
+    const jugador =
+        document.createElement("div");
+
+    jugador.id =
+        "miJugador";
+
+    jugador.className =
+        "jugador";
+
+    jugador.style.left =
+        miX + "%";
+
+    jugador.style.top =
+        miY + "%";
+
+    jugador.style.background =
+        miColor;
+
+    jugador.style.color =
+        miColor;
+
+    juego.appendChild(jugador);
+
+}
+
+/* =====================================================
+   CREAR OTRO JUGADOR
+===================================================== */
+
+function crearJugador(j) {
+
+    /*
+       MUY IMPORTANTE:
+
+       Si soy yo,
+       no creo un nombre sobre mi personaje.
+    */
+
+    if (j.id === miPeerId)
+        return;
+
+    if (
+        document.getElementById(
+            "jugador-" + j.id
+        )
+    ) {
+
+        actualizarJugador(j.id);
+
+        return;
+
+    }
+
+    const contenedor =
+        document.createElement("div");
+
+    contenedor.id =
+        "jugador-" + j.id;
+
+    contenedor.className =
+        "jugadorRemoto";
+
+    contenedor.style.left =
+        j.x + "%";
+
+    contenedor.style.top =
+        j.y + "%";
+
+    /* NOMBRE */
+
+    const nombre =
+        document.createElement("div");
+
+    nombre.className =
+        "nombreJugador";
+
+    nombre.textContent =
+        j.nombre;
+
+    /* PERSONAJE */
+
+    const personaje =
+        document.createElement("div");
+
+    personaje.className =
+        "jugador";
+
+    personaje.style.background =
+        j.color;
+
+    personaje.style.color =
+        j.color;
+
+    contenedor.appendChild(nombre);
+    contenedor.appendChild(personaje);
+
+    juego.appendChild(contenedor);
+
+}
+
+/* =====================================================
+   ACTUALIZAR JUGADOR
+===================================================== */
+
+function actualizarJugador(id) {
+
+    if (id === miPeerId)
+        return;
+
+    const j =
+        jugadores[id];
+
+    const contenedor =
+        document.getElementById(
+            "jugador-" + id
+        );
+
+    if (!j || !contenedor)
+        return;
+
+    const personaje =
+        contenedor.querySelector(
+            ".jugador"
+        );
+
+    const nombre =
+        contenedor.querySelector(
+            ".nombreJugador"
+        );
+
+    personaje.style.background =
+        j.color;
+
+    personaje.style.color =
+        j.color;
+
+    nombre.textContent =
+        j.nombre;
+
+}
+
+/* =====================================================
+   MOVER OTRO JUGADOR
+===================================================== */
+
+function moverJugadorRemoto(
+    id,
+    x,
+    y
+) {
+
+    if (id === miPeerId)
+        return;
+
+    const jugador =
+        document.getElementById(
+            "jugador-" + id
+        );
+
+    if (!jugador)
+        return;
+
+    jugador.style.left =
+        x + "%";
+
+    jugador.style.top =
+        y + "%";
+
+}
+
+/* =====================================================
+   ELIMINAR
+===================================================== */
+
+function eliminarJugador(id) {
+
+    const jugador =
+        document.getElementById(
+            "jugador-" + id
+        );
+
+    if (jugador)
+        jugador.remove();
+
+}
+
+/* =====================================================
+   CANTIDAD
+===================================================== */
+
+function actualizarCantidad() {
+
+    const cantidad =
+        Math.min(
+            Object.keys(jugadores).length,
+            67
+        );
+
+    cantidadTexto.textContent =
+        "👥 Jugadores: " +
+        cantidad +
+        "/67";
+
+    estadoSala.textContent =
+        "👥 " +
+        cantidad +
+        "/67 jugadores";
+
+}
+
+/* =====================================================
+   MOVIMIENTO CELULAR
+===================================================== */
+
+function moverMiJugador(
+    clientX,
+    clientY
+) {
+
+    if (
+        pausado ||
+        juegoTerminado
+    ) return;
+
+    miX =
+        Math.max(
+            4,
+            Math.min(
+                96,
+                clientX /
+                window.innerWidth *
+                100
+            )
+        );
+
+    miY =
+        Math.max(
+            8,
+            Math.min(
+                96,
+                clientY /
+                window.innerHeight *
+                100
+            )
+        );
+
+    const jugador =
+        document.getElementById(
+            "miJugador"
+        );
+
+    if (jugador) {
+
+        jugador.style.left =
+            miX + "%";
+
+        jugador.style.top =
+            miY + "%";
+
+    }
+
+    enviarATodos({
+
+        tipo: "movimiento",
+
+        id: miPeerId,
+
+        x: miX,
+        y: miY
+
+    });
+
+}
+
+/* =====================================================
+   TOUCH
+===================================================== */
+
+juego.addEventListener(
+    "touchstart",
+    e => {
+
+        if (
+            e.target.closest("button") ||
+            e.target.closest("#personalizar")
+        ) return;
+
+        arrastrando = true;
+
+        const t =
+            e.touches[0];
+
+        moverMiJugador(
+            t.clientX,
+            t.clientY
+        );
+
+    },
+    {passive:false}
+);
+
+juego.addEventListener(
+    "touchmove",
+    e => {
+
+        if (!arrastrando)
+            return;
+
+        e.preventDefault();
+
+        const t =
+            e.touches[0];
+
+        moverMiJugador(
+            t.clientX,
+            t.clientY
+        );
+
+    },
+    {passive:false}
+);
+
+juego.addEventListener(
+    "touchend",
+    () => {
+
+        arrastrando = false;
+
+    }
+);
+
+/* =====================================================
+   MOUSE
+===================================================== */
+
+juego.addEventListener(
+    "mousedown",
+    e => {
+
+        if (
+            e.target.closest("button") ||
+            e.target.closest("#personalizar")
+        ) return;
+
+        arrastrando = true;
+
+        moverMiJugador(
+            e.clientX,
+            e.clientY
+        );
+
+    }
+);
+
+juego.addEventListener(
+    "mousemove",
+    e => {
+
+        if (!arrastrando)
+            return;
+
+        moverMiJugador(
+            e.clientX,
+            e.clientY
+        );
+
+    }
+);
+
+document.addEventListener(
+    "mouseup",
+    () => {
+
+        arrastrando = false;
+
+    }
+);
+
+/* =====================================================
+   PAUSA
+===================================================== */
+
+function alternarPausa() {
+
+    pausado =
+        !pausado;
+
+    actualizarPausa();
+
+    enviarATodos({
+
+        tipo: "pausa",
+
+        estado: pausado
+
+    });
+
+}
+
+function actualizarPausa() {
+
+    if (pausado) {
+
+        botonPausa.textContent =
+            "▶ SEGUIR";
+
+        pausaPantalla.style.display =
+            "flex";
+
+    } else {
+
+        botonPausa.textContent =
+            "⏸ PAUSA";
+
+        pausaPantalla.style.display =
+            "none";
+
+    }
+
+}
+
+/* =====================================================
+   TECLAS P / V
+===================================================== */
+
+document.addEventListener(
+    "keydown",
+    e => {
+
+        if (
+            juego.classList
+            .contains("oculto")
+        ) return;
+
+        if (
+            e.key.toLowerCase()
+            === "p"
+        ) {
+
+            pausado = true;
+
+            actualizarPausa();
+
+            enviarATodos({
+
+                tipo: "pausa",
+
+                estado: true
+
+            });
+
+        }
+
+        if (
+            e.key.toLowerCase()
+            === "v"
+        ) {
+
+            pausado = false;
+
+            actualizarPausa();
+
+            enviarATodos({
+
+                tipo: "pausa",
+
+                estado: false
+
+            });
+
+        }
+
+    }
+);
+
+/* =====================================================
+   VELOCIDAD
+===================================================== */
+
+function multiplicadorVelocidad() {
+
+    if (puntos >= 100)
+        return 10;
+
+    if (puntos >= 80)
+        return 8;
+
+    if (puntos >= 60)
+        return 6;
+
+    if (puntos >= 40)
+        return 4;
+
+    if (puntos >= 20)
+        return 2;
+
+    return 1;
+
+}
+
+/* =====================================================
+   CREAR FIGURAS
+===================================================== */
+
+function crearFigura() {
+
+    if (
+        !esHost ||
+        pausado ||
+        juegoTerminado
+    ) return;
+
+    const id =
+        ++contadorFiguras;
+
+    const tipos = [
+        "circulo",
+        "cuadrado",
+        "triangulo"
+    ];
+
+    const tipo =
+        tipos[
+            Math.floor(
+                Math.random() *
+                tipos.length
+            )
+        ];
+
+    const figura = {
+
+        id: id,
+
+        tipo: tipo,
+
+        x:
+            Math.random() * 94 + 3,
+
+        y: -5,
+
+        velocidad:
+            multiplicadorVelocidad()
+            *
+            (0.7 + Math.random() * .8)
+
+    };
+
+    figuras[id] =
+        figura;
+
+    enviarATodos({
+
+        tipo: "figura",
+
+        figura: figura
+
+    });
+
+    mostrarFigura(figura);
+
+    animarFigura(id);
+
+}
+
+/* =====================================================
+   MOSTRAR FIGURA
+===================================================== */
+
+function mostrarFigura(f) {
+
+    if (
+        document.getElementById(
+            "figura-" + f.id
+        )
+    ) return;
+
+    const div =
+        document.createElement("div");
+
+    div.id =
+        "figura-" + f.id;
+
+    div.className =
+        "figura " + f.tipo;
+
+    div.style.left =
+        f.x + "%";
+
+    div.style.top =
+        f.y + "%";
+
+    juego.appendChild(div);
+
+}
+
+/* =====================================================
+   ANIMAR FIGURA
+===================================================== */
+
+function animarFigura(id) {
+
+    if (!esHost)
+        return;
+
+    const f =
+        figuras[id];
+
+    if (!f)
+        return;
+
+    function loop() {
+
+        if (
+            juegoTerminado
+        ) return;
+
+        if (!pausado) {
+
+            f.y +=
+                f.velocidad *
+                .055;
+
+            const div =
+                document.getElementById(
+                    "figura-" + id
+                );
+
+            if (div) {
+
+                div.style.left =
+                    f.x + "%";
+
+                div.style.top =
+                    f.y + "%";
+
+                comprobarColision(f);
+
+            }
+
+            enviarATodos({
+
+                tipo: "figura",
+
+                figura: f
+
+            });
+
+            if (f.y > 105) {
+
+                if (div)
+                    div.remove();
+
+                delete figuras[id];
+
+                perder();
+
+                return;
+
+            }
+
+        }
+
+        requestAnimationFrame(loop);
+
+    }
+
+    requestAnimationFrame(loop);
+
+}
+
+/* =====================================================
+   COLISIÓN
+===================================================== */
+
+function comprobarColision(f) {
+
+    const jugador =
+        document.getElementById(
+            "miJugador"
+        );
+
+    const figura =
+        document.getElementById(
+            "figura-" + f.id
+        );
+
+    if (!jugador || !figura)
+        return;
+
+    const a =
+        jugador.getBoundingClientRect();
+
+    const b =
+        figura.getBoundingClientRect();
+
+    if (
+        a.left < b.right &&
+        a.right > b.left &&
+        a.top < b.bottom &&
+        a.bottom > b.top
+    ) {
+
+        puntos++;
+
+        puntosTexto.textContent =
+            "⭐ Puntos: " +
+            puntos;
+
+        figura.remove();
+
+        delete figuras[f.id];
+
+        enviarATodos({
+
+            tipo: "puntos",
+
+            puntos: puntos
+
+        });
+
+    }
+
+}
+
+/* =====================================================
+   PERDER
+===================================================== */
+
+function perder() {
+
+    perdidas++;
+
+    perdidasTexto.textContent =
+        "❌ Perdidas: " +
+        perdidas +
+        "/5";
+
+    enviarATodos({
+
+        tipo: "perdida",
+
+        perdidas: perdidas
+
+    });
+
+    if (
+        perdidas >=
+        MAX_PERDIDAS
+    ) {
+
+        terminarJuego();
+
+        enviarATodos({
+
+            tipo: "gameover"
+
+        });
+
+    }
+
+}
+
+/* =====================================================
+   GAME OVER
+===================================================== */
+
+function terminarJuego() {
+
+    if (juegoTerminado)
+        return;
+
+    juegoTerminado = true;
+
+    const jugador =
+        document.getElementById(
+            "miJugador"
+        );
+
+    if (jugador)
+        jugador.classList.add(
+            "cayendo"
+        );
+
+    setTimeout(() => {
+
+        document.getElementById(
+            "gameOver"
+        ).style.display =
+            "flex";
+
+        document.getElementById(
+            "resultado"
+        ).textContent =
+            "⭐ Puntos: " +
+            puntos;
+
+    }, 850);
+
+}
+
+/* =====================================================
+   SKIN
+===================================================== */
+
+function abrirSkin() {
+
+    document.getElementById(
+        "nombreSkin"
+    ).value =
+        miNombre;
+
+    document.getElementById(
+        "colorSkin"
+    ).value =
+        miColor;
+
+    personalizar.style.display =
+        "flex";
+
+}
+
+function cerrarSkin() {
+
+    personalizar.style.display =
+        "none";
+
+}
+
+function guardarSkin() {
+
+    const nuevoNombre =
+        document.getElementById(
+            "nombreSkin"
+        ).value.trim();
+
+    if (nuevoNombre)
+        miNombre =
+            nuevoNombre;
+
+    miColor =
+        document.getElementById(
+            "colorSkin"
+        ).value;
+
+    const jugador =
+        document.getElementById(
+            "miJugador"
+        );
+
+    if (jugador) {
+
+        jugador.style.background =
+            miColor;
+
+        jugador.style.color =
+            miColor;
+
+    }
+
+    enviarATodos({
+
+        tipo: "skin",
+
+        id: miPeerId,
+
+        nombre: miNombre,
+
+        color: miColor
+
+    });
+
+    cerrarSkin();
+
+}
+
+/* =====================================================
+   EVITAR ZOOM CON DOBLE TOQUE
+===================================================== */
+
+let ultimoToque = 0;
+
+document.addEventListener(
+    "touchend",
+    e => {
+
+        const ahora =
+            Date.now();
+
+        if (
+            ahora -
+            ultimoToque <
+            300
+        ) {
+
+            e.preventDefault();
+
+        }
+
+        ultimoToque =
+            ahora;
+
+    },
+    {passive:false}
+);
+
+</script>
+
+</body>
+</html>
